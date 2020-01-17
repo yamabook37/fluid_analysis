@@ -1,0 +1,71 @@
+計算物理学　自由課題　流体解析　
+
+[gitとは]　まず以下を軽く読もう
+共同開発の流れ（めっちゃわかりやすい，図もあり）
+https://tmytokai.github.io/open-ed/activity/git/text01/page03.html
+
+https://qiita.com/tktktktk/items/8b40cde759554ea071f9
+
+
+
+[使い方]
+1. github(ネコのあれ)にアカウントを登録
+    ユーザネーム（後から変えられるけどめんどいからよく考えて，ダサい名前にするとあとあと恥ずくなる）
+    メアド
+    パスワード
+
+1. リモートリポジトリから，自分の環境（ローカル）にclone
+    $ git clone https://github.com/Computational-Physics-2019/fluid_analysis.git
+    $ cd fluid_analysis
+
+
+[運用方針]
+・merge, pushはうかつにしないこと
+
+
+[よく使うgitの操作]
+・git stasus
+    addでステージングされているファイルの確認など
+・git diff
+    前回との差分を確認
+・git add ファイルの絶対パス
+    編集したファイルのステージング
+・git commit -m "メッセージ"
+    作業がある程度まとまったら，編集した内容をgitにトレースさせる
+・git push origin ブランチ名
+    ブランチをリモートに反映
+    厳重に注意して実行すること
+・git pull origin develop(目的のブランチ，今回はほぼこれかと)
+    開発中の内容をもらいたい
+
+・git branch
+    ブランチ一覧の表示
+・git checkout ブランチ名
+    ブランチの移動
+
+
+
+ブランチとは
+    機能ごとにブランチ(枝)を切って，別個に開発する
+    がちゃがちゃいじってわけわからなくなっても，ブランチきる前に戻れば無傷ですむ
+    ある程度できたら上位ブランチにマージして，合体
+master : 運用
+    develop : 開発用コード
+        feature/xxxx : 実装したい機能ごと
+developブランチから機能ごとにブランチを切って各人で開発しよう
+
+
+
+
+
+山本備忘録：ファイルサーバに共有のリポジトリ置きたい
+01. 作業ディレクトリはノンベア，いつも通り
+$cd fluid_analysis
+$git init
+$git add .
+$git commit -m "first commit"
+    今回はこっちでいいや
+
+02. リモートを共有設定，更新情報のみを持つベアリポジトリ(.gitディレクトリ)を作成
+$git init --bare --share
+    Initialized empty shared Git repository in /Users/yuki/Develop/pythonProject/python3/fluid_analysis/
