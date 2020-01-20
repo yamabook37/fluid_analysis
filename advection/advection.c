@@ -1,7 +1,7 @@
 /*
 最終更新：1/19 22:00
 編集者：山本
-セグメンテーションエラーの原因を究明中
+使い方はdiffusionと同じ，initialの関数とtの終わり値を変えると面白いかも
 */
 
 #include <stdio.h>
@@ -9,8 +9,8 @@
 #include <math.h>
 #include <time.h>
 
-#define NX (5+2)
-#define NY (5+2)
+#define NX (50+2)
+#define NY (50+2)
 #define KU (1.0)
 #define mu (0.20)//計算の安定性を決めるファクター mu > 2.5 だと計算が爆発する
 
@@ -21,7 +21,7 @@ void initial(int nx, int ny, double dx, double dy, double f[][nx]);
 //その時刻における f[jy][jx] の値をファイルとターミナルにアウトプット
 void output(int nx, int ny, double f[][nx], double t, FILE *fp);
 
-//f[jy][jx] をもとにワンタイムステップ後の状態 fn[jy][jx] を計算。
+//f[jy][jx] をもとにワンタイムステップ後の状態 fn[jy][jx] を計算
 //fn は fn[0][jx] など（つまり境界）は更新されないことに注意
 void advection(int nx, int ny, double f[][nx], double fn[][nx], double u, double v, double dt, double dx, double dy);
 
@@ -48,6 +48,7 @@ int main(){
 
   //CFL条件より
   dt = 0.2* MIN2(dx/fabs(u), dy/fabs(v));
+  //printf("dt:%f\n",dt);
 
   do{
     output(nx, ny, f, t, fp);
@@ -57,7 +58,7 @@ int main(){
 
     t += dt;
 
-  } while (icnt++ < 9999 && t < 0.02 + dt);//t = 0.02 まで出力して欲しいから +dt をくっつけた
+  } while (icnt++ < 9999 && t < 1.01); // 出力させたい t+0.01, dt~0.04
 
   fclose(fp);
   
@@ -99,11 +100,11 @@ void output(int nx, int ny, double f[][nx], double t, FILE *fp) {
   for(int jy = 0; jy < ny; jy++) {
     for(int jx = 0; jx < nx; jx++) {
       if(jx < nx-1){
-        printf("%.2f ", f[jy][jx]);
+        //printf("%.2f ", f[jy][jx]);
         fprintf(fp, "%f ", f[jy][jx]);
       }
       else{
-        printf("%.2f\n", f[jy][jx]);
+        //printf("%.2f\n", f[jy][jx]);
         fprintf(fp, "%f\n", f[jy][jx]); //壁で折り返す
       }
     }
@@ -129,7 +130,7 @@ void advection(int nx, int ny, double f[][nx], double fn[][nx],
 
   //jy=0, jy=ny-1は更新しない
   for(int jy = 1; jy < (ny - 1); jy++) {
-    for(int jx = 1; jy < (nx - 1); jx++) {
+    for(int jx = 1; jx < (nx - 1); jx++) {
 
       fn[jy][jx] = f[jy][jx];
 
