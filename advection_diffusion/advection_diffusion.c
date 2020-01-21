@@ -1,10 +1,17 @@
 /*
-最終更新：1/21 20:40
+最終更新：1/21 24:23
 編集者：武者野
-・boundaryの更新式を修正
-・初期条件を多彩にした
-・境界条件も２通りに
-・初期化直後のfにboundaryを課した
+作成から完成まで
+[TIPS]
+画像の枚数を減らす工夫をした
+define IMAGE_DEVIDE のところを参照
+幸い、Cの計算の方はまだまだ余裕あるからアニメさえ工夫すれば
+まだまだ面白いものが見れそう(メッシュの数増やして写真を滑らかにしたりしたいね)
+
+[お気持ち]
+何となく挙動が不安定な気がする。
+この先で余りにも解が暴れるようだったら、
+移流方程式を解く精度を挙げた方が良さそう
 */
 
 #include <stdio.h>
@@ -22,6 +29,13 @@
 //境界条件が選べる（0:periodic 1:fixed）
 #define BOUNDARY_CONFIG (0)
 
+//写真を何データに一枚撮るかを決める。デフォルトは1(0 はダメ)
+#define IMAGE_DEVIDE (10)
+/*
+毎回出力させていたらデータ多すぎて今の python コードだとアニメが描けない。
+メッシュが 50*50 だったら 5/KU くらいで決めると写真がちょうど1000枚くらいになって軽い（軽いのか？）
+*/
+
 double MIN2(double x, double y);
 
 //初期状態を決定
@@ -32,6 +46,10 @@ void output(int nx, int ny, double f[][nx], double t, FILE *fp);
 //f[jy][jx] をもとにワンタイムステップ後の状態 fn[jy][jx] を計算
 //fn は fn[0][jx] など（つまり境界）は更新されないことに注意
 void advection(int nx, int ny, double f[][nx], double fn[][nx], double u, double v, double dt, double dx, double dy);
+
+void x_advection(int nx, int ny, double f[][nx], double fn[][nx], double u, double dt, double dx);
+void y_advection(int nx, int ny, double f[][nx], double fn[][nx], double v, double dt, double dy);
+void diffusion(int nx, int ny, double f[][nx], double fn[][nx], double kappa, double dt, double dx, double dy);
 
 //fn に境界条件を課す
 void boundary(int nx, int ny, double fn[][nx]);
@@ -51,7 +69,7 @@ int main(){
   // ランダム変数のシードは時刻から取る、つまり毎回違うシード
   srand((unsigned)time(NULL));
 
-  fp = fopen("advection.txt", "w");
+  fp = fopen("advection_diffusion.txt", "w");
   printf("NX:%d NY:%d\nk:%f mu:%f\n", nx, ny, kappa, mu);
   fprintf(fp,"%d %d\n%f %f\n", nx, ny, kappa, mu);
 
@@ -59,13 +77,26 @@ int main(){
   //初期条件のfにも境界条件を課すのが正しい気がする。//1/21/20:18 mushano
   boundary(nx, ny, f);
 
-  //CFL条件より
-  dt = 0.2* MIN2(dx/fabs(u), dy/fabs(v));
+  //CFL条件などより
+  dt = MIN2(0.2* MIN2(dx/fabs(u), dy/fabs(v)), mu * MIN2(dx*dx,dy*dy)/kappa );
   //printf("dt:%f\n",dt);
 
+  // x方向に移流 -> y方向に移流 -> 拡散 の順に繰り返す。なんでこれで良いんだろう…
+  // 逐一アップデートするのを忘れずに
   do{
-    output(nx, ny, f, t, fp);
-    advection(nx, ny, f, fn, u, v, dt, dx, dy);
+
+    //IMAGE_DEVIDE回に一回だけoutputする。つまり写真を撮る回数を減らしてpythonの負担を軽くする。
+    if(icnt%IMAGE_DEVIDE == 0) output(nx, ny, f, t, fp);
+
+    x_advection(nx, ny, f, fn, u, dt, dx);
+    boundary(nx, ny, fn);
+    update(nx, ny, f, fn);
+
+    y_advection(nx, ny, f, fn, v, dt, dy);
+    boundary(nx, ny, fn);
+    update(nx, ny, f, fn);
+
+    diffusion(nx, ny, f, fn, kappa, dt, dx, dy);
     boundary(nx, ny, fn);
     update(nx, ny, f, fn);
 
@@ -161,31 +192,31 @@ void output(int nx, int ny, double f[][nx], double t, FILE *fp) {
 }
 
 //境界条件
-void   boundary(int nx, int ny, double f[][nx]) {
+void boundary(int nx, int ny, double f[][nx]) {
   if(BOUNDARY_CONFIG == 0){
     for(int jy=0 ; jy < ny; jy++) f[jy][0] = f[jy][nx-2];
     for(int jy=0 ; jy < ny; jy++) f[jy][nx-1] = f[jy][1];
-    for(int jx=0 ; jx < nx; jx++) f[0][jx] = f[ny-2][jx];// nx -> ny と修正 1/21 17:43
+    for(int jx=0 ; jx < nx; jx++) f[0][jx] = f[ny-2][jx];
     for(int jx=0 ; jx < nx; jx++) f[ny-1][jx] = f[1][jx];
   }
 
   if(BOUNDARY_CONFIG == 1){
     for(int jy=0 ; jy < ny; jy++) f[jy][0] = 0.0;
     for(int jy=0 ; jy < ny; jy++) f[jy][nx-1] = 0.0;
-    for(int jx=0 ; jx < nx; jx++) f[0][jx] = 0.0;// nx -> ny と修正 1/21 17:43
+    for(int jx=0 ; jx < nx; jx++) f[0][jx] = 0.0;
     for(int jx=0 ; jx < nx; jx++) f[ny-1][jx] = 0.0;
   }
 
   return;
 }
 
-//移流方程式の計算，一次精度風上差分法
+//移流方程式の計算，一次精度風上差分法 使いまわし
 void advection(int nx, int ny, double f[][nx], double fn[][nx], 
   double u, double v, double dt, double dx, double dy) {
   
   double cflx = u*dt/dx,  cfly = v*dt/dy;
 
-  //jy=0, jy=ny-1は更新しない ->ny-1も更新しないのか！！！！！！！！ mushano 1/21/20:02
+  //jy=0, jy=ny-1は更新しない -> ただの dummy だから
   for(int jy = 1; jy < (ny - 1); jy++) {
     for(int jx = 1; jx < (nx - 1); jx++) {
 
@@ -201,6 +232,60 @@ void advection(int nx, int ny, double f[][nx], double fn[][nx],
         fn[jy][jx] += - cfly*(f[jy][jx] - f[jy-1][jx]);
       else        
         fn[jy][jx] += - cfly*(f[jy+1][jx] - f[jy][jx]);
+    }
+  }
+  return;
+}
+
+//一次元移流方程式の追加。yamamonmon の 2D のを援用
+void x_advection(int nx, int ny, double f[][nx], double fn[][nx], double u, double dt, double dx){
+  double cflx = u*dt/dx;
+
+    //jy=0, jy=ny-1は更新しない
+  for(int jy = 1; jy < (ny - 1); jy++) {
+    for(int jx = 1; jx < (nx - 1); jx++) {
+
+      fn[jy][jx] = f[jy][jx];
+
+      //  風上差分
+      if(u > 0.0) 
+        fn[jy][jx] += - cflx*(f[jy][jx] - f[jy][jx-1]);
+      else        
+        fn[jy][jx] += - cflx*(f[jy][jx+1] - f[jy][jx]);
+    }
+  }
+  return;
+}
+
+void y_advection(int nx, int ny, double f[][nx], double fn[][nx], double v, double dt, double dy){
+  double cfly = v*dt/dy;
+
+    //jy=0, jy=ny-1は更新しない
+  for(int jy = 1; jy < (ny - 1); jy++) {
+    for(int jx = 1; jx < (nx - 1); jx++) {
+
+      fn[jy][jx] = f[jy][jx];
+
+      //  風上差分
+      if(v > 0.0) 
+        fn[jy][jx] += - cfly*(f[jy][jx] - f[jy-1][jx]);
+      else        
+        fn[jy][jx] += - cfly*(f[jy+1][jx] - f[jy][jx]);
+    }
+  }
+  return;
+}
+
+
+//拡散方程式は diffusion.c から使いまわし
+void diffusion(int nx, int ny, double f[][nx], double fn[][nx], double kappa, double dt, double dx, double dy){
+  //jy は通常 0 から ny-1 まで走るが、境界条件であるところのjy = 0, jy = ny-1 は更新しない。jxも同様
+  for(int jy = 1; jy < ny-1; jy++) {
+    for(int jx = 1; jx < nx-1; jx++) {
+      fn[jy][jx] = f[jy][jx] + kappa * dt * 
+      ( (f[jy][jx+1] - 2.0*f[jy][jx] + f[jy][jx-1])/dx/dx
+         + (f[jy+1][jx] - 2.0*f[jy][jx] + f[jy-1][jx])/dy/dy
+      );
     }
   }
   return;
