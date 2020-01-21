@@ -1,4 +1,6 @@
-#最終更新2020/1/16 6:00
+#最終更新： 2020/1/21 23:00
+#編集者：山本
+
 '''
 更新内容
 時間を表示させる方法についてかなり粘ったけどなかなかうまくいかんなあ
@@ -9,13 +11,18 @@ http://intothelambda.com/archives/8
 この人達が出来てるから出来るんだろうけど、
 imshow と FuncAnimation を使ってる例が見付からん
 
-文字色を黒に変更
+文字色を黒に変更，やはり白に
+
 '''
 
 import numpy as np
+import matplotlib 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 #from IPython.display import HTML
+
+#matplotlibの設定確認
+print(matplotlib.matplotlib_fname())
 
 f=open('advection.txt')
 #f=open('sample2.txt')
@@ -44,8 +51,8 @@ ax.set_title('2D_advection')
 
 # Axesにテキストを追加
 # なんか知らんがTeX使うときは r が必要っぽい
-ax.text(0.5, 10.0, r"$\mu$="+str(mu), size = 20, color = "black")
-ax.text(0.5, 0.5, r"$\kappa$="+str(kappa), size = 20, color = "black")
+ax.text(0.5, 10.0, r"$\mu$="+str(mu), size = 20, color = "white")
+ax.text(0.5, 0.5, r"$\kappa$="+str(kappa), size = 20, color = "white")
 
 #文字の重なりを防止
 plt.tight_layout()
@@ -98,15 +105,15 @@ print(type(ims))
 print("number of images:", cnt_image)
 
 
-#第二引数はリスト
-ani = animation.ArtistAnimation(fig, ims, interval=10, repeat_delay=100, blit=True,)
-ani.save("advection_anime.mp4", writer="ffmpeg") # mp4 ファイルとして保存 yamamoto 用
-#ani.save("Animation1.gif", writer="imagemagick") # gif ファイルとして保存
-#ani.save("advection_anime.gif", writer="pillow") # gif ファイルとして保存 nushano 用
+#第二引数はリストの必要あり？
+ani = animation.ArtistAnimation(fig, ims, interval=10, repeat_delay=100, blit=True)
+    # blitをTrueにするとfig_imageを返す時にリストだとできなくなる（複数描画が困難な可能性）
+    # imgにappendしていく形をとる場合は，blitをFalseにするように
+#ani.save("advection_anime.mp4", writer="ffmpeg") # mp4 ファイルとして保存 yamamoto 用
+ani.save("advection_anime.gif", writer="imagemagick") # gif ファイルとして保存 yamamoto 用
+#ani.save("advection_anime.gif", writer="pillow") # gif ファイルとして保存 mushano 用
 
-'''
-ani.save("Animation1.gif", writer='pillow') # gif ファイルとして保存
-HTML(ani.to_jshtml()) # HTML上で表示
-'''
+
+#HTML(ani.to_jshtml()) # HTML上で表示
 
 f.close
