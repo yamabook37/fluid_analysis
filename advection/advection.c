@@ -1,7 +1,10 @@
 /*
-最終更新：1/19 22:00
-編集者：山本
-使い方はdiffusionと同じ，initialの関数とtの終わり値を変えると面白いかも
+最終更新：1/21 20:40
+編集者：武者野
+・boundaryの更新式を修正
+・初期条件を多彩にした
+・境界条件も２通りに
+・初期化直後のfにboundaryを課した
 */
 
 #include <stdio.h>
@@ -12,13 +15,18 @@
 #define NX (50+2)
 #define NY (50+2)
 #define KU (1.0)
-#define mu (0.20)//計算の安定性を決めるファクター mu > 2.5 だと計算が爆発する
+#define mu (0.20)//計算の安定性を決めるファクター mu > 0.25 だと計算が爆発する(diffusion eq での話)
+
+//初期条件の形が選べる（0:円みたいの 1:square 2:random 3:point）
+#define INITIAL_CONFIG (0)
+//境界条件が選べる（0:periodic 1:fixed）
+#define BOUNDARY_CONFIG (0)
 
 double MIN2(double x, double y);
 
 //初期状態を決定
 void initial(int nx, int ny, double dx, double dy, double f[][nx]);
-//その時刻における f[jy][jx] の値をファイルとターミナルにアウトプット
+//その時刻における 時刻と f[jy][jx] の値をファイルとターミナルにアウトプット
 void output(int nx, int ny, double f[][nx], double t, FILE *fp);
 
 //f[jy][jx] をもとにワンタイムステップ後の状態 fn[jy][jx] を計算
@@ -40,11 +48,16 @@ int main(){
     dx = Lx/(double)(nx-2), dy = Ly/(double)(ny-2);
   FILE *fp;
 
+  // ランダム変数のシードは時刻から取る、つまり毎回違うシード
+  srand((unsigned)time(NULL));
+
   fp = fopen("advection.txt", "w");
   printf("NX:%d NY:%d\nk:%f mu:%f\n", nx, ny, kappa, mu);
   fprintf(fp,"%d %d\n%f %f\n", nx, ny, kappa, mu);
 
   initial(nx, ny, dx, dy, f);
+  //初期条件のfにも境界条件を課すのが正しい気がする。//1/21/20:18 mushano
+  boundary(nx, ny, f);
 
   //CFL条件より
   dt = 0.2* MIN2(dx/fabs(u), dy/fabs(v));
@@ -80,16 +93,52 @@ double MIN2(double x, double y) {
 //流れの初期化
 void   initial(int nx, int ny, double dx, double dy, double f[][nx]) {
   double  x,  y;
-
-  //計算範囲は jx-1まで
-  for(int jy=0 ; jy < ny; jy++) {
-    for(int jx=0 ; jx < nx; jx++) {
-      x = dx*(double)(jx - 1);
-      y = dy*(double)(jy - 1);
-      //あとで調整
-      f[jy][jx] = sin(2.0*M_PI*x)*sin(2.0*M_PI*y);
+  
+  if(INITIAL_CONFIG == 0){
+    //計算範囲は jx-1まで
+    for(int jy=0 ; jy < ny; jy++) {
+      for(int jx=0 ; jx < nx; jx++) {
+        x = dx*(double)(jx - 1);
+        y = dy*(double)(jy - 1);
+        //あとで調整
+        f[jy][jx] = sin(2.0*M_PI*x)*sin(2.0*M_PI*y);
+      }
     }
   }
+
+  if(INITIAL_CONFIG == 1){
+    for(int jy = 0; jy < ny; jy++) {
+      for(int jx = 0; jx < nx; jx++) {
+        if(0.3*nx < jx && jx < 0.7*nx && 0.3*ny < jy && jy < 0.7*ny){
+          f[jy][jx] = 1.0;
+        }
+        else{
+          f[jy][jx] = 0.0;
+        }
+      }
+    }
+  }
+
+  if(INITIAL_CONFIG == 2){
+    for(int jy = 0; jy < ny; jy++) {
+      for(int jx = 0; jx < nx; jx++) {
+        f[jy][jx] = 0.0;
+      }
+    }
+    for(int i = 0; i < ny*nx; i++) {
+      f[rand()%NY][rand()%NX] = 1.0;
+    }
+  }
+
+  if(INITIAL_CONFIG == 3){
+    for(int jy = 0; jy < ny; jy++) {
+      for(int jx = 0; jx < nx; jx++) {
+        f[jy][jx] = 0.0;
+      }
+    }
+    f[ny/2][nx/2] = 1.0;
+  }
+  
   return;
 }
 
@@ -113,11 +162,19 @@ void output(int nx, int ny, double f[][nx], double t, FILE *fp) {
 
 //境界条件
 void   boundary(int nx, int ny, double f[][nx]) {
+  if(BOUNDARY_CONFIG == 0){
+    for(int jy=0 ; jy < ny; jy++) f[jy][0] = f[jy][nx-2];
+    for(int jy=0 ; jy < ny; jy++) f[jy][nx-1] = f[jy][1];
+    for(int jx=0 ; jx < nx; jx++) f[0][jx] = f[ny-2][jx];// nx -> ny と修正 1/21 17:43
+    for(int jx=0 ; jx < nx; jx++) f[ny-1][jx] = f[1][jx];
+  }
 
-  for(int jy=0 ; jy < ny; jy++) f[jy][0] = f[jy][nx-2];
-  for(int jy=0 ; jy < ny; jy++) f[jy][nx-1] = f[jy][1];
-  for(int jx=0 ; jx < nx; jx++) f[0][jx] = f[nx-2][jx];
-  for(int jx=0 ; jx < nx; jx++) f[ny-1][jx] = f[1][jx];
+  if(BOUNDARY_CONFIG == 1){
+    for(int jy=0 ; jy < ny; jy++) f[jy][0] = 0.0;
+    for(int jy=0 ; jy < ny; jy++) f[jy][nx-1] = 0.0;
+    for(int jx=0 ; jx < nx; jx++) f[0][jx] = 0.0;// nx -> ny と修正 1/21 17:43
+    for(int jx=0 ; jx < nx; jx++) f[ny-1][jx] = 0.0;
+  }
 
   return;
 }
@@ -128,7 +185,7 @@ void advection(int nx, int ny, double f[][nx], double fn[][nx],
   
   double cflx = u*dt/dx,  cfly = v*dt/dy;
 
-  //jy=0, jy=ny-1は更新しない
+  //jy=0, jy=ny-1は更新しない ->ny-1も更新しないのか！！！！！！！！ mushano 1/21/20:02
   for(int jy = 1; jy < (ny - 1); jy++) {
     for(int jx = 1; jx < (nx - 1); jx++) {
 
