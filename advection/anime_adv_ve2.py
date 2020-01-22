@@ -19,7 +19,7 @@ import matplotlib.animation as animation
 #from IPython.display import HTML
 
 #あとで消す
-x = np.arange(0, 10, 0.1)
+#x = np.arange(0, 10, 0.1)
 
 
 # はじめに呼び出す関数
@@ -35,7 +35,7 @@ def update(cnt, fig_title, tt, kappa):
 
   #ここにplt関係を書いてしまう
   plt.title(fig_title + 'cnt=' + str(cnt) + '  time=' + str(tt[cnt])) #関数を呼ぶ回数分時間を表示できる
-  
+    #dataのcntは50まで，timeのcntは253まで
   im = ax.imshow([list(data[cnt])], animated=True, cmap='jet')
   #ims_out = [ims[cnt]]
 
@@ -137,7 +137,7 @@ print("number of images:", cnt_image)
 
 # Func
 ani = animation.FuncAnimation(fig, update, fargs = ('2D_advection  ', tt, kappa),
-  init_func=init(fig,im), interval = 100, frames = 10)
+  init_func=init(fig,im), interval = 100, frames = 50)
 
   #blit=Trueすると動かなくなる
   #第二引数：コールバック用関数（Artist:図を複数回呼び出すに対し，Func:図を作成する関数を複数回呼び出す）
