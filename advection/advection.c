@@ -1,10 +1,8 @@
 /*
-最終更新：1/21 20:40
 編集者：武者野
-・boundaryの更新式を修正
-・初期条件を多彩にした
-・境界条件も２通りに
-・初期化直後のfにboundaryを課した
+最終更新：1/24 4:30
+・fの値を新たなディレクトリ"data"に出力するようにした
+・写真の枚数を別ファイル"picture_number"に出力
 */
 
 #include <stdio.h>
@@ -27,7 +25,7 @@ double MIN2(double x, double y);
 //初期状態を決定
 void initial(int nx, int ny, double dx, double dy, double f[][nx]);
 //その時刻における 時刻と f[jy][jx] の値をファイルとターミナルにアウトプット
-void output(int nx, int ny, double f[][nx], double t, FILE *fp);
+void output(int nx, int ny, double f[][nx], double t, FILE *data_fp);
 
 //f[jy][jx] をもとにワンタイムステップ後の状態 fn[jy][jx] を計算
 //fn は fn[0][jx] など（つまり境界）は更新されないことに注意
@@ -46,14 +44,16 @@ int main(){
     Lx = 1.0,  Ly = 1.0, kappa = KU, t = 0.0,
     u = 1.0, v = 1.0,
     dx = Lx/(double)(nx-2), dy = Ly/(double)(ny-2);
-  FILE *fp;
+  FILE *data_fp, *picnum_fp;
 
   // ランダム変数のシードは時刻から取る、つまり毎回違うシード
   srand((unsigned)time(NULL));
 
-  fp = fopen("advection.txt", "w");
+  data_fp = fopen("data/advection.txt", "w");
+  picnum_fp = fopen("data/picture_number.txt", "w");
+  
   printf("NX:%d NY:%d\nk:%f mu:%f\n", nx, ny, kappa, mu);
-  fprintf(fp,"%d %d\n%f %f\n", nx, ny, kappa, mu);
+  fprintf(data_fp,"%d %d\n%f %f\n", nx, ny, kappa, mu);
 
   initial(nx, ny, dx, dy, f);
   //初期条件のfにも境界条件を課すのが正しい気がする。//1/21/20:18 mushano
@@ -64,7 +64,7 @@ int main(){
   //printf("dt:%f\n",dt);
 
   do{
-    output(nx, ny, f, t, fp);
+    output(nx, ny, f, t, data_fp);
     advection(nx, ny, f, fn, u, v, dt, dx, dy);
     boundary(nx, ny, fn);
     update(nx, ny, f, fn);
@@ -73,7 +73,12 @@ int main(){
 
   } while (icnt++ < 9999 && t < 1.01); // 出力させたい t+0.01, dt~0.04
 
-  fclose(fp);
+  //写真の枚数を出力するで～
+  printf("number of pictures:%d\n", icnt);
+  fprintf(picnum_fp,"%d", icnt);
+
+  fclose(picnum_fp);
+  fclose(data_fp);
   
   return 0;
 }
@@ -143,18 +148,18 @@ void   initial(int nx, int ny, double dx, double dy, double f[][nx]) {
 }
 
 //出力用
-void output(int nx, int ny, double f[][nx], double t, FILE *fp) {
+void output(int nx, int ny, double f[][nx], double t, FILE *data_fp) {
   //printf("t:%f\n", t);
-  fprintf(fp,"%f\n", t);
+  fprintf(data_fp,"%f\n", t);
   for(int jy = 0; jy < ny; jy++) {
     for(int jx = 0; jx < nx; jx++) {
       if(jx < nx-1){
         //printf("%.2f ", f[jy][jx]);
-        fprintf(fp, "%f ", f[jy][jx]);
+        fprintf(data_fp, "%f ", f[jy][jx]);
       }
       else{
         //printf("%.2f\n", f[jy][jx]);
-        fprintf(fp, "%f\n", f[jy][jx]); //壁で折り返す
+        fprintf(data_fp, "%f\n", f[jy][jx]); //壁で折り返す
       }
     }
   }

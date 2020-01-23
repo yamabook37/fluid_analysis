@@ -3,11 +3,19 @@
 #include <math.h>
 #include <time.h>
 
+/*
+更新者：武者野
+最終更新：1/24 3:30
+・fの値を新たなディレクトリ"data"に出力するようにした
+・写真の枚数を別ファイル"picture_number"に出力
+*/
+
 // NX = NY = 11 くらいにして動かすとターミナルに出てくる数値眺めるだけでも
 // 拡散していく様子が見れて面白いから是非！
-#define NX (101)
-#define NY (101)
+#define NX (10+1)
+#define NY (10+1)
 #define KU (1.0)
+#define mu (0.20)//計算の安定性を決めるファクター mu > 2.5 だと計算が爆発する
 
 // 1:初期条件をランダムに生成 0:固定
 #define CONFIG_RANDOM (1)
@@ -15,7 +23,7 @@
 //初期状態を決定
 void initial(int nx, int ny, double f[][nx]);
 //その時刻における f[jy][jx] の値をファイルとターミナルにアウトプット
-void output(int nx, int ny, double f[][nx], double t, FILE *fp);
+void output(int nx, int ny, double f[][nx], double t, FILE *data_fp);
 //f[jy][jx] をもとにワンタイムステップ後の状態 fn[jy][jx] を計算。
 //fn は fn[0][jx] など（つまり境界）は更新されないことに注意
 void diffusion(int nx, int ny, double f[][nx], double fn[][nx], double kappa, double dt, double dx, double dy);
@@ -27,24 +35,25 @@ void update(int nx, int ny, double f[][nx], double fn[][nx]);
 
 int main(){
   int nx = NX, ny = NY, icnt = 0;
-  double f[NY][NX], fn[NY][NX], dt, mu = 0.2,
+  double f[NY][NX], fn[NY][NX], dt,
          Lx = 1.0,  Ly = 1.0, kappa = KU, t = 0.0,
          dx = Lx/(double)(nx-1), dy = Ly/(double)(ny-1);
-  FILE *fp;
+  FILE *data_fp, *picnum_fp;//二つ目は写真の枚数を出力するファイル
 
   // ランダム変数のシードは時刻から取る、つまり毎回違うシード
   srand((unsigned)time(NULL));
 
-  fp = fopen("diffusion_ver2.txt", "w");
-  //printf("NX:%d NY:%d\nk:%f\n", nx, ny, kappa);
-  fprintf(fp,"%d %d\n%f\n", nx, ny, kappa);
+  data_fp = fopen("data/diffusion.txt", "w");
+  picnum_fp = fopen("data/picture_number.txt", "w");
+  //printf("NX:%d NY:%d\nk:%f mu:%f\n", nx, ny, kappa, mu);
+  fprintf(data_fp,"%d %d\n%f %f\n", nx, ny, kappa, mu);
 
   initial(nx, ny, f);
 
   dt = mu * fmin(dx*dx,dy*dy)/kappa;
 
   do{
-    output(nx, ny, f, t, fp);
+    output(nx, ny, f, t, data_fp);
     diffusion(nx, ny, f, fn, kappa, dt, dx, dy);
     boundary(nx, ny, fn);
     update(nx, ny, f, fn);
@@ -53,30 +62,42 @@ int main(){
 
   } while (icnt++ < 9999 && t < 0.02 + dt);//t = 0.02 まで出力して欲しいから +dt をくっつけた
 
-  fclose(fp);
+  //写真の枚数を出力するで～
+  printf("number of pictures:%d\n", icnt);
+  fprintf(picnum_fp,"%d", icnt);
+
+  fclose(picnum_fp);
+  fclose(data_fp);
   return 0;
 }
 
 void initial(int nx, int ny, double f[][nx]){
-  for(int jy = 0; jy < ny; jy++) {
-    for(int jx = 0; jx < nx; jx++) {
-      if(0.3*nx < jx && jx < 0.7*nx && 0.3*ny < jy && jy < 0.7*ny){
-        f[jy][jx] = 5.0;
-      }
-      else if(0.8*nx < jx && jx < 0.9*nx && 0.8*ny < jy && jy < 0.9*ny){
-        f[jy][jx] = 5.0;
-      }
-      else{
-        f[jy][jx] = 0.0;
-      }
-    }
-  }
   if(CONFIG_RANDOM == 1){
+    //ひとまず0を入れる
+    for(int jy = 0; jy < ny; jy++) for(int jx = 0; jx < nx; jx++) {
+      f[jy][jx] = 0.0;
+    }
     //全部の点の10%くらいをランダムに選んで大きい値を持たせる
     for(int i = 0; i < NX*NY/10; i++) {
-      f[rand()%NY][rand()%NX] = 100.0;
+      f[rand()%NY][rand()%NX] = 1.0;
+    }
   }
+  else{
+    for(int jy = 0; jy < ny; jy++) {
+      for(int jx = 0; jx < nx; jx++) {
+        if(0.3*nx < jx && jx < 0.7*nx && 0.3*ny < jy && jy < 0.7*ny){
+          f[jy][jx] = 1.0;
+        }
+        // else if(0.8*nx < jx && jx < 0.9*nx && 0.8*ny < jy && jy < 0.9*ny){
+        //   f[jy][jx] = 5.0;
+        // }
+        else{
+          f[jy][jx] = 0.0;
+        }
+      }
+    }  
   }
+  
   //check用
   // for(int jy = 0; jy < ny; jy++) {
   //   for(int jx = 0; jx < nx; jx++) {
@@ -91,18 +112,18 @@ void initial(int nx, int ny, double f[][nx]){
   return;
 }
 
-void output(int nx, int ny, double f[][nx], double t, FILE *fp){
+void output(int nx, int ny, double f[][nx], double t, FILE *data_fp){
   //printf("t:%f\n", t);
-  fprintf(fp,"%f\n", t);
+  fprintf(data_fp,"%f\n", t);
   for(int jy = 0; jy < ny; jy++) {
     for(int jx = 0; jx < nx; jx++) {
       if(jx < nx-1){
         //printf("%.2f ", f[jy][jx]);
-        fprintf(fp, "%f ", f[jy][jx]);
+        fprintf(data_fp, "%f ", f[jy][jx]);
       }
       else{
         //printf("%.2f\n", f[jy][jx]);
-        fprintf(fp, "%f\n", f[jy][jx]);
+        fprintf(data_fp, "%f\n", f[jy][jx]);
       }
     }
   }
@@ -143,8 +164,6 @@ void boundary(int nx, int ny, double fn[][nx]){
 
 void update(int nx, int ny, double f[][nx], double fn[][ny]){
   //範囲に注目。
-  //jy = 0 や jy = ny-1 まで更新しているからいちいち boundary 呼び出さなきゃいけないのでは？？
-  //diffusionと同じように  1<= jy < ny-1 だけ更新すれば boundary 呼び出し不要そう
   for(int jy = 0; jy < ny; jy++) {
     for(int jx = 0; jx < nx; jx++){
       f[jy][jx] = fn[jy][jx];

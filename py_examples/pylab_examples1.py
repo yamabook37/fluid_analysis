@@ -77,7 +77,7 @@ never used.
 # Make some illustrative fake data:
 
 #NUMPYの関数
-x = np.arange(0, np.pi, 0.1)　#0<n<np.piで間隔が0.1の等差数列
+x = np.arange(0, np.pi, 0.1) #0<n<np.piで間隔が0.1の等差数列
 
 y = np.arange(0, 2*np.pi, 0.1)
 X, Y = np.meshgrid(x, y)  #格子点となるx,y座標を作成する
@@ -98,7 +98,7 @@ fig, axs = plt.subplots(2, 2, figsize=(6, 9))
 
 #余白の設定　（左右上下、wspace:左右の余白、hspace:上下の余白）
 fig.subplots_adjust(left=0.02, bottom=0.06, right=0.95, top=0.94, wspace=0.05)
-　
+
 for n_bin, ax in zip(n_bins, axs.ravel()):
 
     # Create the colormap

@@ -1,17 +1,9 @@
 /*
-最終更新：1/21 24:23
+最終更新：1/24 5:00
 編集者：武者野
-作成から完成まで
-[TIPS]
-画像の枚数を減らす工夫をした
-define IMAGE_DEVIDE のところを参照
-幸い、Cの計算の方はまだまだ余裕あるからアニメさえ工夫すれば
-まだまだ面白いものが見れそう(メッシュの数増やして写真を滑らかにしたりしたいね)
-
-[お気持ち]
-何となく挙動が不安定な気がする。
-この先で余りにも解が暴れるようだったら、
-移流方程式を解く精度を挙げた方が良さそう
+・fの値を新たなディレクトリ"data"に出力するようにした
+・写真の枚数を別ファイル"picture_number"に出力
+・icntとは別にoutputした回数を数える変数 ocnt を追加
 */
 
 #include <stdio.h>
@@ -19,18 +11,18 @@ define IMAGE_DEVIDE のところを参照
 #include <math.h>
 #include <time.h>
 
-#define NX (50+2)
-#define NY (50+2)
-#define KU (1.0)
-#define mu (0.20)//計算の安定性を決めるファクター mu > 0.25 だと計算が爆発する(diffusion eq での話)
+#define NX (200+2)
+#define NY (200+2)
+#define KU (0.01)
+#define mu (0.10)//0.1くらいにする必要がありそう
 
 //初期条件の形が選べる（0:円みたいの 1:square 2:random 3:point）
-#define INITIAL_CONFIG (0)
+#define INITIAL_CONFIG (1)
 //境界条件が選べる（0:periodic 1:fixed）
 #define BOUNDARY_CONFIG (0)
 
 //写真を何データに一枚撮るかを決める。デフォルトは1(0 はダメ)
-#define IMAGE_DEVIDE (10)
+#define IMAGE_DEVIDE (20)
 /*
 毎回出力させていたらデータ多すぎて今の python コードだとアニメが描けない。
 メッシュが 50*50 だったら 5/KU くらいで決めると写真がちょうど1000枚くらいになって軽い（軽いのか？）
@@ -41,7 +33,7 @@ double MIN2(double x, double y);
 //初期状態を決定
 void initial(int nx, int ny, double dx, double dy, double f[][nx]);
 //その時刻における 時刻と f[jy][jx] の値をファイルとターミナルにアウトプット
-void output(int nx, int ny, double f[][nx], double t, FILE *fp);
+void output(int nx, int ny, double f[][nx], double t, FILE *data_fp);
 
 //f[jy][jx] をもとにワンタイムステップ後の状態 fn[jy][jx] を計算
 //fn は fn[0][jx] など（つまり境界）は更新されないことに注意
@@ -59,19 +51,21 @@ void update(int nx, int ny, double f[][nx], double fn[][nx]);
 
 //ほぼ変更せず，流れに沿って作成
 int main(){
-  int nx = NX, ny = NY, icnt = 0;
+  int nx = NX, ny = NY, icnt = 0, ocnt = 0;
   double f[NY][NX], fn[NY][NX], dt,
     Lx = 1.0,  Ly = 1.0, kappa = KU, t = 0.0,
     u = 1.0, v = 1.0,
     dx = Lx/(double)(nx-2), dy = Ly/(double)(ny-2);
-  FILE *fp;
+  FILE *data_fp, *picnum_fp;
 
   // ランダム変数のシードは時刻から取る、つまり毎回違うシード
   srand((unsigned)time(NULL));
 
-  fp = fopen("advection_diffusion.txt", "w");
+  data_fp = fopen("data/advection_diffusion.txt", "w");
+  picnum_fp = fopen("data/picture_number.txt", "w");
+
   printf("NX:%d NY:%d\nk:%f mu:%f\n", nx, ny, kappa, mu);
-  fprintf(fp,"%d %d\n%f %f\n", nx, ny, kappa, mu);
+  fprintf(data_fp,"%d %d\n%f %f\n", nx, ny, kappa, mu);
 
   initial(nx, ny, dx, dy, f);
   //初期条件のfにも境界条件を課すのが正しい気がする。//1/21/20:18 mushano
@@ -86,7 +80,10 @@ int main(){
   do{
 
     //IMAGE_DEVIDE回に一回だけoutputする。つまり写真を撮る回数を減らしてpythonの負担を軽くする。
-    if(icnt%IMAGE_DEVIDE == 0) output(nx, ny, f, t, fp);
+    if(icnt%IMAGE_DEVIDE == 0){
+      output(nx, ny, f, t, data_fp);
+      ocnt++;
+    }
 
     x_advection(nx, ny, f, fn, u, dt, dx);
     boundary(nx, ny, fn);
@@ -104,7 +101,12 @@ int main(){
 
   } while (icnt++ < 9999 && t < 1.01); // 出力させたい t+0.01, dt~0.04
 
-  fclose(fp);
+  //写真の枚数を出力するで～
+  printf("number of pictures:%d\n", ocnt);
+  fprintf(picnum_fp,"%d", ocnt);
+
+  fclose(picnum_fp);
+  fclose(data_fp);
   
   return 0;
 }
@@ -174,18 +176,18 @@ void   initial(int nx, int ny, double dx, double dy, double f[][nx]) {
 }
 
 //出力用
-void output(int nx, int ny, double f[][nx], double t, FILE *fp) {
+void output(int nx, int ny, double f[][nx], double t, FILE *data_fp) {
   //printf("t:%f\n", t);
-  fprintf(fp,"%f\n", t);
+  fprintf(data_fp,"%f\n", t);
   for(int jy = 0; jy < ny; jy++) {
     for(int jx = 0; jx < nx; jx++) {
       if(jx < nx-1){
         //printf("%.2f ", f[jy][jx]);
-        fprintf(fp, "%f ", f[jy][jx]);
+        fprintf(data_fp, "%f ", f[jy][jx]);
       }
       else{
         //printf("%.2f\n", f[jy][jx]);
-        fprintf(fp, "%f\n", f[jy][jx]); //壁で折り返す
+        fprintf(data_fp, "%f\n", f[jy][jx]); //壁で折り返す
       }
     }
   }
