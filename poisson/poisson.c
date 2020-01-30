@@ -1,3 +1,15 @@
+/*
+最終更新：1/31 6:40
+更新者：武者野
+
+[内容]
+・７章のコードを再現
+・s(x,y)に対するpossion方程式の解f(x,y)を算出
+・境界条件はf(x,y)=0
+・s_func()に好きな関数形(境界条件は満たす)を入れることで任意の関数について poisson eq が解ける
+・ここでは解析解の分かっているs(x,y)に大して計算を行い求めることで動作を確認
+*/
+
 #define _USE_MATH_DEFINES
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,8 +111,9 @@ int poisson2d(int nx, int ny, double dx, double dy, double f[][nx],
 
   // 反復
   while(icnt++ < imax){
-    //fの更新と差の確認
+    //fの更新と更新前後の差の最大値確認
     err = sor(nx,ny,dx,dy,f,s,omega);
+    //更新してもほとんど変わらないようなら終了
     if(eps > err) return icnt;
     if(icnt%CHECK_INTERVAL == 0){
       double resi = residual(nx, ny, dx, dy, f, s);
@@ -109,6 +122,7 @@ int poisson2d(int nx, int ny, double dx, double dy, double f[][nx],
     // printf("err:%f\n", err);
   }
 
+  // imax 回反復しても収束しないなら-1を返して終了
   return -1;
 }
 
