@@ -1,25 +1,34 @@
 /*
-最終更新：1/30 12:00
-編集者：山本
-・時間幅を揃えたい，OK
-・新しく設定定数を定義
+最終更新：1/31 3:30
+編集者：武者野
+・ちゃんと時刻0.01刻みで出力するように調整
+　->do whileのwhile{ここ}を変えただけ
+・実行時間を出力
+・%f はデフォルトで少数6桁までしか出力しないらしい（メモ）
 
-[問題点]
+[問題点 (now fixed)]
 ・k=0.10, EPS=0.01の時，一致するデータが少ない
+--> 条件：cnt++<9999 でその後の更新が止まってただけ
 ・未だ最適なEPSの値を見つかっていない
+--> 1e-10 とかでok
+
+[やりたいこと]
+画像の名前を作るための部品をPythonに渡したい
+例： KU = 0.10 で INITIAL_CONFIG = 3 なら"0.1" と "point" を渡す
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <string.h>
 
 #define NX (200+2)
 #define NY (200+2)
-#define KU (0.10) //変域0.01<k<0.1 -> 10<Re<100ってことか
+#define KU (0.01) //変域0.01<k<0.1 -> 10<Re<100ってことか
 #define mu (0.10)//0.1くらいにする必要がありそう
 
-#define EPS (0.01) //これくらい？で対応できそう 0.01-0.1?
+#define EPS (1e-10)//「abs(a-b)<EPS」は「a==b」の言い換えだから小さければ小さいほど良い
 #define DT (0.01) //表示させたい時間の間隔
 #define ENDTIME (1.0) //ループの終了する時間
 
@@ -63,10 +72,18 @@ int main(){
     Lx = 1.0,  Ly = 1.0, kappa = KU, t = 0.0,
     u = 1.0, v = 1.0,
     dx = Lx/(double)(nx-2), dy = Ly/(double)(ny-2);
-
-  double ti[(int)((ENDTIME+0.01)/DT)] = {0.0}; //間隔分確保
   int ti_cnt = 0;
   FILE *data_fp, *picnum_fp;
+
+  //⇓この書き方だと我の環境ではコンパイル通らなかったので変更
+  //double ti[(int)((ENDTIME+0.01)/DT)] = {0.0}; //間隔分確保
+  int ti_size = (int)((ENDTIME+0.01)/DT);
+  double ti[ti_size];
+  
+  //実行時間計測用
+  time_t start_t,end_t;
+  
+  start_t = time(NULL);
 
   // ランダム変数のシードは時刻から取る、つまり毎回違うシード
   srand((unsigned)time(NULL));
@@ -82,18 +99,17 @@ int main(){
   boundary(nx, ny, f);
 
   //CFL条件などより
-  dt = MIN2(0.2* MIN2(dx/fabs(u), dy/fabs(v)), mu * MIN2(dx*dx,dy*dy)/kappa );
-  //printf("dt:%f\n",dt);
-
-  // 表示したい時間配列の用意
+  dt = MIN2(0.2* MIN2(dx/fabs(u), dy/fabs(v)), mu * MIN2(dx*dx,dy*dy)/kappa);
+  printf("dt:%.10f\n",dt);
+  
+  //表示したい時間配列の用意
   for(ti_cnt = 0; ti_cnt<(int)((ENDTIME+0.01)/DT); ti_cnt ++) {
-    ti[ti_cnt] += DT * ti_cnt;
+    ti[ti_cnt] = DT * ti_cnt;
     //printf("%d:DT=%f\n",ti_cnt, ti[ti_cnt]);
   }
-
-
   //初期化
   ti_cnt = 0;
+
   // x方向に移流 -> y方向に移流 -> 拡散 の順に繰り返す。なんでこれで良いんだろう…
   // 逐一アップデートするのを忘れずに
   do{
@@ -108,6 +124,7 @@ int main(){
       output(nx, ny, f, t, data_fp);
       ocnt++;
       ti_cnt++;
+      printf("t:%.10f\n", t);
     }
 
     x_advection(nx, ny, f, fn, u, dt, dx);
@@ -122,11 +139,15 @@ int main(){
     boundary(nx, ny, fn);
     update(nx, ny, f, fn);
 
+    //printf("%.10f\n",t);
     t += dt;
-    //printf("%f\n",t);
 
-  } while (icnt++ < 9999 && t < (ENDTIME+0.01)); // 出力させたい t+0.01, 
+    icnt++;
+  } while (/*icnt++ < 9999 &&*/ t < (ENDTIME+0.01)); // 出力させたい t+0.01,
   // 参考までに dt~0.04(KU=0.01), dt~0.0004(KU=0.10)
+  // dt=2.5e-4(KU=0.01) dt=2.5e-5(KU=0.10) dt=2.5e-6(KU=1.00)
+  // icnt < 9999 を消去すればちゃんと欲しい枚数だけゲットできる、但し計算量は多くなる
+  // --> NY=NX=202 なら実行時間：8[s](KU=0.01), 52[s](KU=0.1), 495[s](KU=1.0)
 
   //写真の枚数を出力するで～
   printf("number of pictures:%d\n", ocnt);
@@ -135,6 +156,10 @@ int main(){
   fclose(picnum_fp);
   fclose(data_fp);
   
+  end_t = time(NULL);
+  //time_t は秒単位までの計測
+  printf("This calculatioin took %d second \n", end_t-start_t);
+
   return 0;
 }
 

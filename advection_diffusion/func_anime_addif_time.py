@@ -1,47 +1,46 @@
-#最終更新： 2020/1/30 14:45
-#編集者：山本
+#最終更新： 2020/1/31 3:30
+#編集者：武者野
 
 '''
-[主な更新内容]
-・保存ファイルの指定を簡単化する設定を追加
+[previous 主な更新内容]
+・保存ファイルの指定を簡単化する設定を追加 <- いいね
+
+[主な改善点]
 
 [改善点]
 ・タイトルと中身以外の ax は使い回したい
 ・y軸ラベルのYはみだし問題
-・図の枚数受け取り問題 -> 解決
-・一枚一枚の時間幅をうまく調節しないと比較ができない
 
-[お気持ち]
-κ、μと時間の表示がちょっとうるさいかもしれない。
 気になったセンスのある人は配置とか配色とかフォントとか透明度とかいじってみてほしい
 
 [次の予定]
-・時間間隔の調整 <- C言語側で対応済み
-・κの値を変えたものを同時上映
+・κの値を変えたものを同時上映（ax 増やせばすぐできる）
+・計算条件から FILE_PATH を決定するのを自動化（Cで出力するようにすればすぐできる）
+
+[お気持ち]
+κ、μと時間の表示がちょっとうるさいかもしれない。
 '''
 
 import numpy as np
 import matplotlib 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-#from IPython.display import HTML
+from IPython.display import HTML
 
 ###################### CONFIG ##################
 # 動画保存方法の config。 使いたい保存方法を１にする
 YAMAMOTO_MP4 = 0
-YAMAMOTO_GIF = 1
-MUSHANO_GIF  = 0
+YAMAMOTO_GIF = 0
+MUSHANO_GIF  = 1
 HTML_SHOW    = 0
 ###################### CONFIG ##################
 
 ###################### ANIME ###################
 #ファイル名(含む：条件）を一括で指定
-FILE_PATH = 'animes/ad_dif_point_k01'
+FILE_PATH = 'animes/ad_dif_point_k001_test'
 ###################### ANIME ###################
 
 ################### PARAMETER ##################
-#何枚の写真まで受け取って動画にするか <- 本当は C で画像が何枚になるか計算し、それを受け取るべき
-# ---> 受け取りにした
 #図のタイトル (グローバル変数で良いよね？)
 TITLE = '2D advection diffusion'
 ################### PARAMETER ##################
@@ -64,8 +63,10 @@ kappa, mu = map(float, line.split())
 
 #print(NX,NY,k)
 
-#図のサイズ（インチ）
+# 図のサイズ（インチ）
 fig = plt.figure(figsize=(5, 5))
+# y軸ラベルはみ出し問題対処
+fig.subplots_adjust(left=0.80)
 # Axesを追加
 ax = fig.add_subplot(111)
 
