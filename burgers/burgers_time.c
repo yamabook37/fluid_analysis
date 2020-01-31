@@ -13,8 +13,8 @@
 #include <math.h>
 #include <time.h>
 
-#define NX (50+2)
-#define NY (50+2)
+#define NX (200+2)
+#define NY (200+2)
 #define LX 1.0
 #define LY 1.0
 //#define KU (0.01)
@@ -32,7 +32,7 @@ Re=100,point <-> ad_ifのk=0.01,point
 #define ENDTIME (5.0) //ループの終了する時間，長めに取らないとデータ数少ない
 
 //初期条件の形が選べる（0:円みたいの 1:ink 2:random 3:point）
-#define INITIAL_CONFIG (2)
+#define INITIAL_CONFIG (1)
 //境界条件が選べる（0:periodic 1:fixed）
 #define BOUNDARY_CONFIG (0)
 

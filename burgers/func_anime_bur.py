@@ -18,7 +18,8 @@
 気になったセンスのある人は配置とか配色とかフォントとか透明度とかいじってみてほしい
 
 [次の予定]
-・κの値を変えたものを同時上映 # クラスつけて，オブジェクトをちょちょっと動かせばできそう
+・κの値を変えたものを同時上映 
+  クラスつけて，オブジェクトをちょちょっと動かせばできそう
 '''
 
 import numpy as np
@@ -29,8 +30,8 @@ import matplotlib.animation as animation
 
 ###################### CONFIG ##################
 # 動画保存方法の config。 使いたい保存方法を１にする
-YAMAMOTO_MP4 = 0
-YAMAMOTO_GIF = 1
+YAMAMOTO_MP4 = 1
+YAMAMOTO_GIF = 0
 MUSHANO_GIF  = 0
 HTML_SHOW    = 0
 ###################### CONFIG ##################
@@ -38,7 +39,7 @@ HTML_SHOW    = 0
 ###################### ANIME ###################
 #ファイル名(含む：条件）を一括で指定
 #コード_表示する変数_初期条件_パラメータ
-FILE_PATH = 'animes/burgers_rot_rand_Re1000'
+FILE_PATH = 'animes/burgers_rot_ink_Re1000'
 ###################### ANIME ###################
 
 ################### PARAMETER ##################
