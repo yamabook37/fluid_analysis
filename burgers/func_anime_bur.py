@@ -1,10 +1,9 @@
-#最終更新： 2020/1/24 22:15
+#最終更新： 2020/1/31 9:15
 #編集者：山本
 
 '''
 [主な更新内容]
-・func_anime_addifを転用
-・kappaの表示をReに変更
+・time幅に対応
 
 [改善点]
 ・LX, LYの値によって枠の形を変えたい
@@ -19,7 +18,6 @@
 気になったセンスのある人は配置とか配色とかフォントとか透明度とかいじってみてほしい
 
 [次の予定]
-・時間間隔の調整　#本当にどうぞよろしくお願いいたしますyamamoto
 ・κの値を変えたものを同時上映 # クラスつけて，オブジェクトをちょちょっと動かせばできそう
 '''
 
@@ -37,6 +35,12 @@ MUSHANO_GIF  = 0
 HTML_SHOW    = 0
 ###################### CONFIG ##################
 
+###################### ANIME ###################
+#ファイル名(含む：条件）を一括で指定
+#コード_表示する変数_初期条件_パラメータ
+FILE_PATH = 'animes/burgers_rot_rand_Re1000'
+###################### ANIME ###################
+
 ################### PARAMETER ##################
 #何枚の写真まで受け取って動画にするか <- 本当は C で画像が何枚になるか計算し、それを受け取るべき
 # ---> 受け取りにした
@@ -53,7 +57,7 @@ FRAME_NUMBER = int(picnum_file.readline())
 # と思ったんだけどなぜか2枚引かないとエラーになる。何でか分かったら教えて
 FRAME_NUMBER -= 2
 
-f = open('data/burgers.txt')
+f = open('data/burgers_time.txt')
 line = f.readline()
 NX, NY = map(int, line.split())
 line = f.readline()
@@ -64,6 +68,8 @@ Re, mu = map(float, line.split())
 
 #図のサイズ（インチ）
 fig = plt.figure(figsize=(5, 5))
+# y軸ラベルはみ出し問題対処
+fig.subplots_adjust(left=0.80)
 # Axesを追加
 ax = fig.add_subplot(111)
 
@@ -140,13 +146,13 @@ ani = animation.FuncAnimation(fig, update,
 
 # mp4 ファイルとして保存 yamamoto 用
 if(YAMAMOTO_MP4 == 1):
-  ani.save("animes/burgers_anime.mp4", writer="ffmpeg")
+  ani.save(FILE_PATH + ".mp4", writer="ffmpeg")
 # gif ファイルとして保存 yamamoto 用
 if(YAMAMOTO_GIF == 1):
-  ani.save("animes/burgers_anime.gif", writer="imagemagick")
+  ani.save(FILE_PATH + ".gif", writer="imagemagick")
 # gif ファイルとして保存 mushano 用
 if(MUSHANO_GIF == 1):
-  ani.save("animes/burgers_anime.gif", writer="pillow")
+  ani.save(FILE_PATH + ".gif", writer="pillow")
 '''
 if(HTML_SHOW == 1):
   HTML(ani.to_jshtml()) # HTML上で表示
