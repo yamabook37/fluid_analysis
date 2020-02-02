@@ -30,8 +30,8 @@ import matplotlib.animation as animation
 ###################### CONFIG ##################
 # 動画保存方法の config。 使いたい保存方法を１にする
 YAMAMOTO_MP4 = 0
-YAMAMOTO_GIF = 1
-MUSHANO_GIF  = 0
+YAMAMOTO_GIF = 0
+MUSHANO_GIF  = 1
 HTML_SHOW    = 0
 ###################### CONFIG ##################
 
