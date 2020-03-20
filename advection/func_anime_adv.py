@@ -47,13 +47,13 @@ NX, NY = map(int, f.readline().split())
 kappa, mu = map(float, f.readline().split())
 
 
-fig = plt.figure(figsize=(6, 6)) #図のサイズ（インチ）
+fig = plt.figure(figsize=(7, 7)) #図のサイズ（インチ）
 fig.subplots_adjust(left=0.20)
 ax = fig.add_subplot(111) # Axesを追加
 ax.set_xlim(0, NX-1)
 ax.set_ylim(0, NY-1)
 ax.set_xlabel('X', fontsize=16)
-ax.set_ylabel('y', fontsize=16)
+ax.set_ylabel('Y', fontsize=16)
 ax.tick_params(labelsize=14)
 ax.set_title(TITLE, fontsize=20)
 ax.text(0.02, 0.035, r"$\mu$="+str(mu)+"\n"+r"$\kappa$="+str(kappa),
@@ -74,7 +74,7 @@ for _ in range(NY):
   data.append(tmp)
 
 im = ax.imshow(data, animated=True, cmap='jet')
-cbar = fig.colorbar(im, shrink=0.7)
+cbar = fig.colorbar(im, shrink=0.75)
 cbar.ax.tick_params(labelsize=16)
 
 
