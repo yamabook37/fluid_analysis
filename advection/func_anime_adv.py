@@ -32,7 +32,7 @@ FILE_PATH = 'animes/adv_u_point_Re2000'
 
 
 ################### PARAMETER ##################
-TITLE = '2D diffusion'
+TITLE = '2D advection'
 
 #matplotlibの設定確認
 #print(matplotlib.matplotlib_fname())
