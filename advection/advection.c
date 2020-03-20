@@ -1,6 +1,6 @@
 /*
-編集者：武者野
-最終更新：1/24 4:30
+更新者：山本
+最終更新：2020/3/22 4:00
 ・fの値を新たなディレクトリ"data"に出力するようにした
 ・写真の枚数を別ファイル"picture_number"に出力
 */
@@ -10,18 +10,21 @@
 #include <math.h>
 #include <time.h>
 
-#define NX (50+2)
-#define NY (50+2)
-#define KU (1.0)
-#define mu (0.20)//計算の安定性を決めるファクター mu > 0.25 だと計算が爆発する(diffusion eq での話)
+#define NX (30+2)
+#define NY (30+2)
+#define KU (0.0005) //k=1/Re, k=0.1,Re=10
+#define mu (0.20) //計算の安定性を決めるファクター mu > 0.25 だと計算が爆発する(diffusion eq での話)
 
+
+/******************************計算条件******************************/
 //初期条件の形が選べる（0:円みたいの 1:square 2:random 3:point）
 #define INITIAL_CONFIG (0)
 //境界条件が選べる（0:periodic 1:fixed）
 #define BOUNDARY_CONFIG (0)
 
-double MIN2(double x, double y);
 
+/*******************************************************************/
+double MIN2(double x, double y);
 //初期状態を決定
 void initial(int nx, int ny, double dx, double dy, double f[][nx]);
 //その時刻における 時刻と f[jy][jx] の値をファイルとターミナルにアウトプット
@@ -33,15 +36,15 @@ void advection(int nx, int ny, double f[][nx], double fn[][nx], double u, double
 
 //fn に境界条件を課す
 void boundary(int nx, int ny, double fn[][nx]);
-//更新。計算して求めた fn は新たな fn を求めるための f へと♪～
+//更新用．計算して求めた fn は新たな fn を求めるための f へと♪～
 void update(int nx, int ny, double f[][nx], double fn[][nx]);
 
 
-//ほぼ変更せず，流れに沿って作成
+/*******************************************************************/
 int main(){
   int nx = NX, ny = NY, icnt = 0;
-  double f[NY][NX], fn[NY][NX], dt,
-    Lx = 1.0,  Ly = 1.0, kappa = KU, t = 0.0,
+  double f[NY][NX], fn[NY][NX], dt, t = 0.0,
+    Lx = 1.0,  Ly = 1.0, kappa = KU, 
     u = 1.0, v = 1.0,
     dx = Lx/(double)(nx-2), dy = Ly/(double)(ny-2);
   FILE *data_fp, *picnum_fp;
