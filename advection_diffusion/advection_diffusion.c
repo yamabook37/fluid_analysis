@@ -1,35 +1,45 @@
 /*
-最終更新：1/24 5:00
-編集者：武者野
-・fの値を新たなディレクトリ"data"に出力するようにした
-・写真の枚数を別ファイル"picture_number"に出力
-・icntとは別にoutputした回数を数える変数 ocnt を追加
+更新者：山本
+最終更新：2020/3/21 5:30
+[問題点 (now fixed)]
+・k=0.10, EPS=0.01の時，一致するデータが少ない
+--> 条件：cnt++<9999 でその後の更新が止まってただけ
+・未だ最適なEPSの値を見つかっていない
+--> 1e-10 とかでok
+
+[やりたいこと]
+画像の名前を作るための部品をPythonに渡したい
+例： KU = 0.10 で INITIAL_CONFIG = 3 なら"0.1" と "point" を渡す
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <string.h>
 
-#define NX (200+2)
-#define NY (200+2)
-#define KU (0.01)
-#define mu (0.10)//0.1くらいにする必要がありそう
+#define NX (100+2)
+#define NY (100+2)
+#define KU (0.01) //k=1/Re
+#define mu (0.10) //計算の安定性を決めるファクター mu > 2.5 だと計算が爆発する
+// 時間合わせ用
+#define EPS (1e-10)//「abs(a-b)<EPS」は「a==b」の言い換えだから小さければ小さいほど良い
+#define DT (0.01) //表示させたい時間の間隔
+#define ENDTIME (2.0) //ループの終了する時間
 
-//初期条件の形が選べる（0:円みたいの 1:square 2:random 3:point）
+
+/******************************初期条件******************************/
+// 初期条件の形が選べる（0:円 1:square 2:random 3:point）
 #define INITIAL_CONFIG (1)
-//境界条件が選べる（0:periodic 1:fixed）
+// 境界条件が選べる（0:periodic 1:fixed）
 #define BOUNDARY_CONFIG (0)
 
-//写真を何データに一枚撮るかを決める。デフォルトは1(0 はダメ)
+// 写真を何データに一枚撮るかを決める。デフォルトは1(0 はダメ)
 #define IMAGE_DEVIDE (20)
-/*
-毎回出力させていたらデータ多すぎて今の python コードだとアニメが描けない。
-メッシュが 50*50 だったら 5/KU くらいで決めると写真がちょうど1000枚くらいになって軽い（軽いのか？）
-*/
 
+
+/*******************************************************************/
 double MIN2(double x, double y);
-
 //初期状態を決定
 void initial(int nx, int ny, double dx, double dy, double f[][nx]);
 //その時刻における 時刻と f[jy][jx] の値をファイルとターミナルにアウトプット
@@ -49,40 +59,67 @@ void boundary(int nx, int ny, double fn[][nx]);
 void update(int nx, int ny, double f[][nx], double fn[][nx]);
 
 
-//ほぼ変更せず，流れに沿って作成
+/*******************************************************************/
 int main(){
   int nx = NX, ny = NY, icnt = 0, ocnt = 0;
-  double f[NY][NX], fn[NY][NX], dt,
-    Lx = 1.0,  Ly = 1.0, kappa = KU, t = 0.0,
+  double f[NY][NX], fn[NY][NX], dt, t = 0.0,
+    Lx = 1.0,  Ly = 1.0, kappa = KU, 
     u = 1.0, v = 1.0,
     dx = Lx/(double)(nx-2), dy = Ly/(double)(ny-2);
   FILE *data_fp, *picnum_fp;
 
+  //時間合わせ
+  int ti_cnt = 0;
+  int ti_size = (int)((ENDTIME+0.01)/DT);
+  double ti[ti_size];
+  double ti_tmp;
+  
+  //実行時間計測用
+  time_t start_t, end_t;
+  start_t = time(NULL);
+
   // ランダム変数のシードは時刻から取る、つまり毎回違うシード
   srand((unsigned)time(NULL));
 
-  data_fp = fopen("data/advection_diffusion.txt", "w");
+  data_fp = fopen("data/addif.txt", "w");
   picnum_fp = fopen("data/picture_number.txt", "w");
 
   printf("NX:%d NY:%d\nk:%f mu:%f\n", nx, ny, kappa, mu);
-  fprintf(data_fp,"%d %d\n%f %f\n", nx, ny, kappa, mu);
+  fprintf(data_fp,"%d %d\n%f %f %f %f\n", nx-2, ny-2, Lx, Ly, kappa, mu);
 
   initial(nx, ny, dx, dy, f);
   //初期条件のfにも境界条件を課すのが正しい気がする。//1/21/20:18 mushano
   boundary(nx, ny, f);
 
   //CFL条件などより
-  dt = MIN2(0.2* MIN2(dx/fabs(u), dy/fabs(v)), mu * MIN2(dx*dx,dy*dy)/kappa );
-  //printf("dt:%f\n",dt);
+  dt = MIN2(0.2* MIN2(dx/fabs(u), dy/fabs(v)), mu * MIN2(dx*dx,dy*dy)/kappa);
+  printf("dt:%.10f\n",dt);
+  
+  //表示したい時間配列の用意
+  /*
+  for(ti_cnt = 0; ti_cnt<(int)((ENDTIME+0.01)/DT); ti_cnt ++) {
+    ti[ti_cnt] = DT * ti_cnt;
+    //printf("%d:DT=%f\n",ti_cnt, ti[ti_cnt]);
+  }*/
+  //初期化
+  ti_cnt = 0;
+  ti_tmp = 0.0;
+  while(ti_tmp < ENDTIME + EPS){
+    ti[ti_cnt] = ti_tmp;
+    ti_tmp += DT;
+    ti_cnt += 1;
+  }
 
-  // x方向に移流 -> y方向に移流 -> 拡散 の順に繰り返す。なんでこれで良いんだろう…
+  // x方向に移流 -> y方向に移流 -> 拡散 の順に繰り返す
   // 逐一アップデートするのを忘れずに
+  ti_cnt = 0;
+  int arrayNum = sizeof ti / sizeof ti[0];
   do{
-
-    //IMAGE_DEVIDE回に一回だけoutputする。つまり写真を撮る回数を減らしてpythonの負担を軽くする。
-    if(icnt%IMAGE_DEVIDE == 0){
+    if(ti_cnt < arrayNum-1 && t > ti[ti_cnt] - EPS) {
+      //printf("%f\n",fabs(t - ti[ti_cnt]));
       output(nx, ny, f, t, data_fp);
-      ocnt++;
+      ti_cnt++;
+      printf("t:%.10f\n", t);
     }
 
     x_advection(nx, ny, f, fn, u, dt, dx);
@@ -97,21 +134,31 @@ int main(){
     boundary(nx, ny, fn);
     update(nx, ny, f, fn);
 
+    //printf("%.10f\n",t);
     t += dt;
-
-  } while (icnt++ < 9999 && t < 1.01); // 出力させたい t+0.01, dt~0.04
+    //icnt++;
+  } while (/*icnt++ < 9999 &&*/ t < (ENDTIME + DT)); // 出力させたい t+0.01,
+  // 参考までに dt~0.04(KU=0.01), dt~0.0004(KU=0.10)
+  // dt=2.5e-4(KU=0.01) dt=2.5e-5(KU=0.10) dt=2.5e-6(KU=1.00)
+  // icnt < 9999 を消去すればちゃんと欲しい枚数だけゲットできる、但し計算量は多くなる
+  // --> NY=NX=202 なら実行時間：8[s](KU=0.01), 52[s](KU=0.1), 495[s](KU=1.0)
 
   //写真の枚数を出力するで～
-  printf("number of pictures:%d\n", ocnt);
-  fprintf(picnum_fp,"%d", ocnt);
+  printf("number of pictures:%d\n", arrayNum);
+  fprintf(picnum_fp,"%d", arrayNum);
 
   fclose(picnum_fp);
   fclose(data_fp);
   
+  end_t = time(NULL);
+  //time_t は秒単位までの計測
+  printf("This calculatioin took %ld second \n", end_t-start_t);
+
   return 0;
 }
 
 
+/*******************************************************************/
 //関数系の作成
 double MIN2(double x, double y) {
   double min;
@@ -286,7 +333,7 @@ void diffusion(int nx, int ny, double f[][nx], double fn[][nx], double kappa, do
     for(int jx = 1; jx < nx-1; jx++) {
       fn[jy][jx] = f[jy][jx] + kappa * dt * 
       ( (f[jy][jx+1] - 2.0*f[jy][jx] + f[jy][jx-1])/dx/dx
-         + (f[jy+1][jx] - 2.0*f[jy][jx] + f[jy-1][jx])/dy/dy
+        + (f[jy+1][jx] - 2.0*f[jy][jx] + f[jy-1][jx])/dy/dy
       );
     }
   }

@@ -1,25 +1,29 @@
+/*
+更新者：山本
+最終更新：2020/2/21 4:30
+・fの値を新たなディレクトリ"data"に出力するようにした
+・写真の枚数を別ファイル"picture_number"に出力
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
 
-/*
-更新者：武者野
-最終更新：1/24 3:30
-・fの値を新たなディレクトリ"data"に出力するようにした
-・写真の枚数を別ファイル"picture_number"に出力
-*/
-
 // NX = NY = 11 くらいにして動かすとターミナルに出てくる数値眺めるだけでも
 // 拡散していく様子が見れて面白いから是非！
-#define NX (10+1)
-#define NY (10+1)
-#define KU (1.0)
-#define mu (0.20)//計算の安定性を決めるファクター mu > 2.5 だと計算が爆発する
+#define NX (30+1)
+#define NY (30+1)
+#define KU (1.0) //k=1/Re
+#define mu (0.20) //計算の安定性を決めるファクター mu > 2.5 だと計算が爆発する
 
-// 1:初期条件をランダムに生成 0:固定
-#define CONFIG_RANDOM (1)
 
+/******************************初期条件******************************/
+// 0:固定 1:ランダム 
+#define CONFIG_RANDOM (0)
+
+
+/*******************************************************************/
 //初期状態を決定
 void initial(int nx, int ny, double f[][nx]);
 //その時刻における f[jy][jx] の値をファイルとターミナルにアウトプット
@@ -33,11 +37,12 @@ void boundary(int nx, int ny, double fn[][nx]);
 void update(int nx, int ny, double f[][nx], double fn[][nx]);
 
 
+/*******************************************************************/
 int main(){
   int nx = NX, ny = NY, icnt = 0;
-  double f[NY][NX], fn[NY][NX], dt,
-         Lx = 1.0,  Ly = 1.0, kappa = KU, t = 0.0,
-         dx = Lx/(double)(nx-1), dy = Ly/(double)(ny-1);
+  double f[NY][NX], fn[NY][NX], dt, t = 0.0,
+      Lx = 1.0,  Ly = 1.0, kappa = KU,
+      dx = Lx/(double)(nx-1), dy = Ly/(double)(ny-1);
   FILE *data_fp, *picnum_fp;//二つ目は写真の枚数を出力するファイル
 
   // ランダム変数のシードは時刻から取る、つまり毎回違うシード
@@ -71,6 +76,8 @@ int main(){
   return 0;
 }
 
+
+/*******************************************************************/
 void initial(int nx, int ny, double f[][nx]){
   if(CONFIG_RANDOM == 1){
     //ひとまず0を入れる
@@ -135,7 +142,7 @@ void diffusion(int nx, int ny, double f[][nx], double fn[][nx], double kappa, do
     for(int jx = 1; jx < nx-1; jx++) {
       fn[jy][jx] = f[jy][jx] + kappa * dt * 
       ( (f[jy][jx+1] - 2.0*f[jy][jx] + f[jy][jx-1])/dx/dx
-         + (f[jy+1][jx] - 2.0*f[jy][jx] + f[jy-1][jx])/dy/dy
+        + (f[jy+1][jx] - 2.0*f[jy][jx] + f[jy-1][jx])/dy/dy
       );
     }
   }
@@ -147,18 +154,19 @@ void boundary(int nx, int ny, double fn[][nx]){
   for(int jy=0 ; jy < ny; jy++) fn[jy][nx-1] = 0.0;
   for(int jx=0 ; jx < nx; jx++) fn[0][jx] = 0.0;
   for(int jx=0 ; jx < nx; jx++) fn[ny-1][jx] = 0.0;
-  //check 用
-  // printf("boundary chech\n");
-  // for(int jy = 0; jy < ny; jy++) {
-  //   for(int jx = 0; jx < nx; jx++) {
-  //     if(jx < nx-1){
-  //       printf("%.1f ", f[jy][jx]);
-  //     }
-  //     else{
-  //       printf("%.1f\n", f[jy][jx]);
-  //     }
-  //   }
-  // }
+  /* check 用
+  printf("boundary chech\n");
+  for(int jy = 0; jy < ny; jy++) {
+    for(int jx = 0; jx < nx; jx++) {
+      if(jx < nx-1){
+        printf("%.1f ", f[jy][jx]);
+      }
+      else{
+        printf("%.1f\n", f[jy][jx]);
+      }
+    }
+  }
+  */
   return;
 }
 
